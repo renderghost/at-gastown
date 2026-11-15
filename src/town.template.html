@@ -78,11 +78,12 @@ input[type=number]{width:64px}
 .phead::before{content:"";align-self:stretch;margin:-8px 0;background:var(--c)}
 .zlist{display:flex;flex-direction:column;gap:6px;padding:0 8px 8px 14px}
 .zrow{display:grid;grid-template-columns:4px minmax(0,1fr) auto auto;gap:6px;align-items:center;background:#141927;border:1px solid var(--line);border-radius:6px;padding:6px 6px 6px 0;overflow:hidden}
-.zrow::before{content:"";grid-row:1 / 3;align-self:stretch;margin:-6px 0;background:var(--c)}
+.zrow::before{content:"";grid-row:1 / 4;align-self:stretch;margin:-6px 0;background:var(--c)}
 .zrow input[type=text]{width:100%;grid-column:2 / 4;grid-row:1}
 .zrow .del{grid-column:4;grid-row:1}
 .zrow select{grid-column:2;grid-row:2;width:100%}
 .zrow input[type=number]{grid-column:3 / 5;grid-row:2;width:100%}
+.zrow input.zs{grid-column:2 / 5;grid-row:3;width:100%}
 .phead input[type=text]{width:100%}
 .del{background:none;border:0;color:var(--muted);font-size:18px;line-height:1;padding:2px 6px;cursor:pointer}
 .del:hover{color:var(--warn)}
@@ -95,6 +96,26 @@ input[type=number]{width:64px}
 pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px solid var(--line);border-radius:6px;padding:10px;max-height:260px;overflow:auto;white-space:pre;color:#cfd6e8}
 .small{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin:0}
 .reset{align-self:flex-start}
+.stream-card{position:absolute;left:10px;bottom:10px;width:260px;max-width:calc(100% - 20px);background:#0c0f17f2;border:1px solid var(--line);border-radius:8px;overflow:hidden;opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.stream-card.show{opacity:1;transform:none;pointer-events:auto}
+.stream-card video,.theatre video{display:block;width:100%;aspect-ratio:16/9;background:#000;object-fit:contain}
+.stream-card video{cursor:zoom-in}
+.stream-card .meta{padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;font-size:12px}
+.stitle{color:var(--text);font-weight:600;font-size:13px;line-height:1.3}
+.live{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px;color:#ff7a7a;letter-spacing:.04em;text-transform:uppercase}
+.live::before{content:"";width:7px;height:7px;border-radius:50%;background:#ff4d4d}
+.live.off{color:var(--muted)}.live.off::before{background:var(--muted)}
+.vol{height:4px;background:#262d42;border-radius:2px;overflow:hidden}.vol i{display:block;height:100%;width:0;background:var(--ok)}
+#vstash{position:absolute;left:0;bottom:0;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none}
+.theatre{position:fixed;inset:0;z-index:50;background:rgba(6,8,14,.95);display:none;flex-direction:column;gap:12px;padding:14px 16px 16px}
+.theatre.open{display:flex}
+.theatre header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.theatre h3{margin:0;font-size:16px;font-weight:600}
+.theatre .spacer{flex:1}
+.theatre .screenwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.theatre .screenwrap video{max-height:100%;width:auto;max-width:100%;border-radius:6px}
+.theatre a.btn{text-decoration:none;color:var(--text)}
+@media (max-width:860px){.stream-card{width:200px}}
 .reset.confirm{background:var(--warn);border-color:var(--warn);color:#2a0d05;font-weight:600}
 @media (max-width:860px){
   html,body{height:auto}
@@ -103,7 +124,7 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
   .viewport{flex:none;height:62svh;min-height:300px}
   .rail{overflow:visible}
 }
-@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+@media (prefers-reduced-motion:reduce){.toast,.stream-card{transition:none}}
 </style>
 </head>
 <body>
@@ -118,6 +139,16 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
         <button id="z4" aria-pressed="false">4×</button>
       </div>
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      <div id="vstash" aria-hidden="true"></div>
+      <div class="stream-card" id="scard">
+        <div id="svbox"></div>
+        <div class="meta">
+          <div class="row" style="justify-content:space-between"><span class="live" id="slive">Live</span><span class="small" id="sname"></span></div>
+          <div class="stitle" id="stitle"></div>
+          <div class="vol" title="Volume"><i id="svol"></i></div>
+          <div class="row"><button class="btn" id="ssound" hidden>Turn on sound</button><button class="btn" id="senlarge">Enlarge</button></div>
+        </div>
+      </div>
     </div>
     <div class="toolbar" id="toolbar">
       <div class="seg" role="group" aria-label="Tool">
@@ -190,6 +221,21 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
   </aside>
 </div>
 
+<div class="theatre" id="theatre" role="dialog" aria-modal="true" aria-labelledby="ttitle">
+  <header>
+    <span class="live" id="tlive">Live</span>
+    <h3 id="ttitle"></h3>
+    <span class="small" id="tname"></span>
+    <span class="spacer"></span>
+    <a class="btn" id="topen" target="_blank" rel="noopener">Open on Streamplace</a>
+    <button class="btn" id="tfull">Full screen</button>
+    <button class="btn" id="tclose">Close</button>
+  </header>
+  <div class="screenwrap" id="tvbox"></div>
+  <p class="small" id="tnote"></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 const DATA = /*__DATA__*/null;
 </script>
@@ -285,7 +331,7 @@ const THEMES={
 /* Presets in fractions of the town interior; zones in fractions of each place's interior */
 const PRESETS={
   atmoconf:{name:'AtmosphereConf demo',places:[
-    ['hall',[.00,.00,.44,.47],'Main hall',[['stage',[.03,.04,.62,.92],80,'Keynote stage'],['pair',[.71,.04,.27,.62],12,'Hallway track']]],
+    ['hall',[.00,.00,.44,.47],'Main hall',[['stage',[.03,.04,.62,.92],80,'Keynote stage',{streamer:'pubtoons.com'}],['pair',[.71,.04,.27,.62],12,'Hallway track']]],
     ['park',[.50,.00,.50,.42],'Park',[['lounge',[.04,.07,.46,.6],24,'Picnic lawn'],['mic',[.56,.07,.4,.84],16,'Lightning talks']]],
     ['office',[.00,.56,.40,.44],'Hack space',[['focus',[.04,.05,.58,.9],24,'Hack desks'],['pair',[.68,.05,.28,.6],8,'Call booths']]],
     ['city',[.52,.50,.27,.50],'Square',[['lounge',[.05,.05,.9,.48],18,'Café'],['stage',[.05,.6,.9,.36],12,'Bandstand']]],
@@ -295,7 +341,7 @@ const PRESETS={
 };
 
 /* ---------------- state ---------------- */
-const STORE='pixelspace.town.v1';
+const STORE='pixelspace.town.v2';
 const nid=p=>p+(state.nextId++);
 let state=null;
 try{const s=JSON.parse(localStorage.getItem(STORE)||'null');if(s&&SIZES[s.size]&&Array.isArray(s.places))state=s;}catch(e){}
@@ -317,10 +363,11 @@ function applyPreset(){
     if(validatePlace(p,null,W,H))continue;
     state.places.push(p);
     const I=interior(p);
-    for(const [mode,zf,cap,zname] of zones){
+    for(const [mode,zf,cap,zname,stream] of zones){
       const z={id:nid('z'),name:zname,mode,cap:Math.max(2,Math.round(cap*Math.max(.35,scale))),
         x:I.x+Math.round(zf[0]*I.w),y:I.y+Math.round(zf[1]*I.h),w:Math.round(zf[2]*I.w),h:Math.round(zf[3]*I.h)};
       z.w=Math.min(z.w,I.x+I.w-z.x);z.h=Math.min(z.h,I.y+I.h-z.y);
+      if(stream) z.stream={...stream};
       if(!validateZone(z,p,null))p.zones.push(z);
     }
   }
@@ -786,6 +833,7 @@ function build(){
       case 'decor':drawDecor(p,th);break;
     }
   }
+  syncStreams();
   reachVis=reach().vis;
   seatSet=new Set([...seats,...spots].map(o=>o.y*W+o.x));
   placePeople();
@@ -882,8 +930,10 @@ cv.addEventListener('pointerleave',()=>{hover=null;});
 cv.addEventListener('pointerup',e=>{
   if(drag){commitDrag();drag=null;}
   else if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<10){
-    const n=npcAt(down.w.x,down.w.y);
-    if(n){hover=n;toast(`@${n.p.handle} · ${n.p.status}`);walkTo({x:n.tx,y:n.ty},true);}
+    const scr=screenAt(down.w.x,down.w.y);
+    const n=scr?null:npcAt(down.w.x,down.w.y);
+    if(scr){openTheatre(scr);}
+    else if(n){hover=n;toast(`@${n.p.handle} · ${n.p.status}`);walkTo({x:n.tx,y:n.ty},true);}
     else walkTo(down.t);
   }
   down=null;
@@ -898,7 +948,7 @@ function walkTo(t,stopShort){
   path.reverse();if(stopShort&&path.length)path.pop();player.path=path;
 }
 const KEYS={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right'};
-addEventListener('keydown',e=>{const tg=e.target.tagName;if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA')return;const d=KEYS[e.code];if(d){held=d;player.path=[];e.preventDefault();}});
+addEventListener('keydown',e=>{if(theatreStream){if(e.key==='Escape')closeTheatre();return;}const tg=e.target.tagName;if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA')return;const d=KEYS[e.code];if(d){held=d;player.path=[];e.preventDefault();}});
 addEventListener('keyup',e=>{if(KEYS[e.code]===held)held=null;});
 
 function stepActor(a,next){const dx=next.x-a.tx,dy=next.y-a.ty;a.dir=dx>0?'right':dx<0?'left':dy>0?'down':'up';a.fx=a.tx;a.fy=a.ty;a.tx=next.x;a.ty=next.y;a.t=0;}
@@ -918,6 +968,7 @@ function update(dt){
     if(next){ if(walkable(next.x,next.y)) stepActor(player,next); else player.path=[]; }
   }
   const tile=player.ty*W+player.tx;if(tile!==lastTile&&player.t>=1){lastTile=tile;updateStatus();}
+  updateStreams(dt);
   if(reduce) return;
   for(const n of npcs){
     if(!n.wander) continue;
@@ -953,6 +1004,7 @@ function draw(now,dt){
   ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#0c0f17';ctx.fillRect(0,0,cv.width,cv.height);
   const k=scale*dpr;ctx.setTransform(k,0,0,k,-camX*k,-camY*k);ctx.imageSmoothingEnabled=false;
   ctx.drawImage(world,0,0);
+  drawScreens(now);
 
   // people, back to front
   const x0=camX-24,y0=camY-24,x1=camX+vw+24,y1=camY+vh+24;
@@ -979,6 +1031,12 @@ function draw(now,dt){
   // screen-space labels
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.textBaseline='middle';
   const S2=(wx,wy)=>[(wx-camX)*scale,(wy-camY)*scale];
+  ctx.font='600 11px "IBM Plex Sans", system-ui, sans-serif';
+  if(scale>=1.2) for(const s of STREAMS.values()){
+    // badge in the screen's bottom-left corner, like a TV channel bug
+    const r=s.rect,[sx,sy]=S2(r.x+2,r.y+r.h-2),live=s.state==='live',text=`${live?'LIVE':s.state==='connecting'?'CONNECTING':'OFFLINE'} · @${s.streamer}`,tw=ctx.measureText(text).width;
+    pill(sx,sy-17,tw+22,17,'rgba(12,15,23,.85)');ctx.fillStyle=live?'#ff4d4d':'#9aa2b8';ctx.beginPath();ctx.arc(sx+9,sy-8.5,3.5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ece7da';ctx.fillText(text,sx+17,sy-8);
+  }
   ctx.font='600 12px "IBM Plex Sans", system-ui, sans-serif';
   for(const p of state.places){
     const th=THEMES[p.theme],[sx,sy]=S2((p.x+p.w/2)*T,p.y*T),text=p.name,tw=ctx.measureText(text).width;
@@ -1006,6 +1064,134 @@ function draw(now,dt){
 function pill(x,y,w,h,c){ctx.fillStyle=c;ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,4);else ctx.rect(x,y,w,h);ctx.fill();}
 function nameTag(x,y,text,bg,fg){const tw=ctx.measureText(text).width;pill(x-tw/2-6,y-16,tw+12,15,bg);ctx.fillStyle=fg;ctx.fillText(text,x-tw/2,y-8.5);}
 function loop(now){const dt=Math.min(50,now-last);last=now;update(dt);draw(now,dt);requestAnimationFrame(loop);}
+
+/* ---------------- Streamplace screens ----------------
+   A zone can carry {stream:{streamer}}. Its screen plays the live HLS feed from
+   place.stream.playback.getLivePlaylist. Sound only plays inside the same place,
+   full volume within FULL tiles of the screen and fading out by HEAR tiles. */
+const STREAMS=new Map(),HEAR=13,FULL=4;
+let activeStream=null,theatreStream=null,soundUnlocked=false;
+const vstash=document.getElementById('vstash');
+addEventListener('pointerdown',()=>{soundUnlocked=true;},{capture:true});
+addEventListener('keydown',()=>{soundUnlocked=true;},{capture:true});
+const canSound=()=>navigator.userActivation?navigator.userActivation.hasBeenActive:soundUnlocked;
+const playlistUrl=s=>`https://stream.place/xrpc/place.stream.playback.getLivePlaylist?streamer=${encodeURIComponent(s.streamer)}`;
+function screenRect(z){
+  const iw=z.w-2,ix=z.x+1,iy=z.y+1;let cx,bottom,maxW;
+  if(z.mode==='stage'){const stW=Math.max(4,iw-(iw>8?2:0)),sx=ix+Math.floor((iw-stW)/2);cx=(sx+stW/2)*T;bottom=iy*T+1;maxW=stW*T-12;}
+  else {cx=(ix+iw/2)*T;bottom=iy*T+2;maxW=iw*T-8;}
+  const w=Math.max(48,Math.min(112,maxW)),h=Math.round(w*9/16);
+  return {x:Math.round(cx-w/2),y:bottom-h,w,h};
+}
+function startStream(s){
+  s.state='connecting';
+  if(window.Hls&&Hls.isSupported()){
+    const h=new Hls({liveSyncDurationCount:3,maxBufferLength:12,backBufferLength:10});s.hls=h;
+    h.on(Hls.Events.MANIFEST_PARSED,()=>{s.state='live';s.v.play().catch(()=>{});});
+    h.on(Hls.Events.ERROR,(e,d)=>{if(!d.fatal)return;s.state='offline';h.destroy();s.hls=null;clearTimeout(s.retry);s.retry=setTimeout(()=>startStream(s),30000);});
+    h.loadSource(playlistUrl(s));h.attachMedia(s.v);
+  } else if(s.v.canPlayType('application/vnd.apple.mpegurl')){
+    s.v.src=playlistUrl(s);
+    s.v.onloadedmetadata=()=>{s.state='live';s.v.play().catch(()=>{});};
+    s.v.onerror=()=>{s.state='offline';clearTimeout(s.retry);s.retry=setTimeout(()=>{s.v.removeAttribute('src');startStream(s);},30000);};
+  } else s.state='offline';
+}
+async function fetchStreamTitle(s){
+  try{
+    let did=s.streamer;
+    if(!did.startsWith('did:')) did=(await fetch(`https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(did)}`).then(r=>r.json())).did;
+    const doc=await fetch(did.startsWith('did:web:')?`https://${did.slice(8)}/.well-known/did.json`:`https://plc.directory/${did}`).then(r=>r.json());
+    const pds=doc.service.find(x=>x.id.endsWith('atproto_pds')).serviceEndpoint;
+    const l=await fetch(`${pds}/xrpc/com.atproto.repo.listRecords?repo=${did}&collection=place.stream.livestream&limit=1`).then(r=>r.json());
+    const t=l.records&&l.records[0]&&l.records[0].value&&l.records[0].value.title;
+    if(t){s.title=t;renderStreamUI();}
+  }catch(e){}
+}
+function makeStream(z){
+  const v=document.createElement('video');v.muted=true;v.playsInline=true;v.setAttribute('playsinline','');v.autoplay=true;v.crossOrigin='anonymous';
+  v.addEventListener('click',()=>{if(!theatreStream)openTheatre(s);});
+  const s={streamer:z.stream.streamer,v,hls:null,state:'connecting',title:'',vol:0,target:0,retry:0};
+  vstash.append(v);startStream(s);fetchStreamTitle(s);return s;
+}
+function destroyStream(s){clearTimeout(s.retry);if(s.hls)s.hls.destroy();s.v.pause();s.v.removeAttribute('src');try{s.v.load();}catch(e){}s.v.remove();if(activeStream===s)activeStream=null;if(theatreStream===s)closeTheatre();}
+function syncStreams(){
+  const want=new Map();
+  flatZones.forEach(({z,p})=>{if(z.stream&&z.stream.streamer)want.set(z.id+'|'+z.stream.streamer,{z,p});});
+  for(const [k,s] of STREAMS) if(!want.has(k)){destroyStream(s);STREAMS.delete(k);}
+  for(const [k,{z,p}] of want){let s=STREAMS.get(k);if(!s){s=makeStream(z);STREAMS.set(k,s);}s.zone=z;s.place=p;s.placeIdx=state.places.indexOf(p);s.rect=screenRect(z);}
+}
+function hearing(s){
+  if(!player||own[player.ty*W+player.tx]!==s.placeIdx) return 0;
+  const d=Math.hypot(player.tx+.5-(s.rect.x+s.rect.w/2)/T,player.ty+.5-(s.rect.y+s.rect.h)/T);
+  return Math.max(0,Math.min(1,(HEAR-d)/(HEAR-FULL)));
+}
+function screenAt(wx,wy){for(const s of STREAMS.values()){const r=s.rect;if(wx>=r.x-3&&wx<=r.x+r.w+3&&wy>=r.y-3&&wy<=r.y+r.h+3)return s;}return null;}
+function updateStreams(dt){
+  let best=null;
+  for(const s of STREAMS.values()){
+    s.target=theatreStream===s?1:(s.state==='live'?hearing(s):0);
+    s.vol+=(s.target-s.vol)*Math.min(1,dt/300);
+    const vol=s.vol<.02?0:Math.min(1,s.vol);
+    if(vol===0||!canSound()){if(!s.v.muted)s.v.muted=true;}
+    else{try{s.v.volume=vol;}catch(e){}if(s.v.muted){s.v.muted=false;s.v.play().catch(()=>{s.v.muted=true;s.v.play().catch(()=>{});});}}
+    if(s.state==='live'&&s.v.paused&&s.v.readyState>=2)s.v.play().catch(()=>{});
+    if(s.target>0&&(!best||s.target>best.target))best=s;
+  }
+  if(!theatreStream&&best!==activeStream){
+    if(activeStream&&activeStream.v.parentNode!==vstash)vstash.append(activeStream.v);
+    activeStream=best;if(best)$('svbox').append(best.v);
+    $('scard').classList.toggle('show',!!best);renderStreamUI();
+  }
+  if(activeStream){$('svol').style.width=Math.round(activeStream.vol*100)+'%';$('ssound').hidden=canSound()||activeStream.target<=0;}
+}
+function renderStreamUI(){
+  const s=activeStream||theatreStream;if(!s)return;
+  const live=s.state==='live',title=s.title||`@${s.streamer} on Streamplace`;
+  for(const id of ['slive','tlive']){const e=$(id);e.textContent=live?'Live':(s.state==='connecting'?'Connecting':'Offline');e.classList.toggle('off',!live);}
+  $('sname').textContent='@'+s.streamer;$('stitle').textContent=title;
+  $('ttitle').textContent=title;$('tname').textContent='@'+s.streamer;$('topen').href='https://stream.place/'+encodeURIComponent(s.streamer);
+  $('tnote').textContent=s.zone?`Showing on the screen in ${s.place.name} › ${s.zone.name}. Close this to go back to the map, where the sound depends on how close you stand.`:'';
+}
+function openTheatre(s){
+  if(!s)return;theatreStream=s;activeStream=null;$('scard').classList.remove('show');
+  $('tvbox').append(s.v);s.v.controls=true;soundUnlocked=true;
+  if(s.v.muted){s.v.muted=false;s.v.play().catch(()=>{});}
+  $('theatre').classList.add('open');renderStreamUI();$('tclose').focus();
+}
+function closeTheatre(){
+  const s=theatreStream;if(!s)return;
+  if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+  s.v.controls=false;vstash.append(s.v);theatreStream=null;activeStream=null;
+  $('theatre').classList.remove('open');cv.focus({preventScroll:true});
+}
+function drawScreens(now){
+  for(const s of STREAMS.values()){
+    const r=s.rect;
+    const gl=ctx.createRadialGradient(r.x+r.w/2,r.y+r.h+6,4,r.x+r.w/2,r.y+r.h+6,r.w*.75);
+    gl.addColorStop(0,s.state==='live'?'rgba(170,210,255,.16)':'rgba(170,190,220,.06)');gl.addColorStop(1,'rgba(170,210,255,0)');
+    ctx.fillStyle=gl;ctx.fillRect(r.x-r.w/2,r.y+r.h,r.w*2,r.w*.6);
+    ctx.fillStyle='rgba(10,8,22,.4)';ctx.fillRect(r.x-1,r.y+r.h+3,r.w+4,2);
+    ctx.fillStyle='#101218';ctx.fillRect(r.x-3,r.y-3,r.w+6,r.h+6);
+    ctx.fillStyle='#2c313d';ctx.fillRect(r.x-3,r.y-3,r.w+6,1);ctx.fillRect(r.x-3,r.y-3,1,r.h+6);
+    if(s.state==='live'&&s.v.readyState>=2){ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(s.v,r.x,r.y,r.w,r.h);ctx.imageSmoothingEnabled=false;}
+    else{
+      ctx.fillStyle='#0c1220';ctx.fillRect(r.x,r.y,r.w,r.h);
+      const rnd=mulberry(Math.floor(now/90));ctx.fillStyle='rgba(200,215,255,.10)';
+      for(let i=0;i<60;i++)ctx.fillRect(r.x+Math.floor(rnd()*r.w),r.y+Math.floor(rnd()*r.h),2,1);
+      ctx.fillStyle='rgba(200,215,255,.05)';for(let y=r.y;y<r.y+r.h;y+=3)ctx.fillRect(r.x,y,r.w,1);
+    }
+    ctx.fillStyle='rgba(255,255,255,.06)';ctx.fillRect(r.x,r.y,r.w,1);
+    if(s.state==='live'){ctx.fillStyle='#ff4d4d';ctx.fillRect(r.x+r.w-6,r.y+3,3,3);}
+  }
+}
+function wireStreamUI(){
+$('senlarge').addEventListener('click',()=>openTheatre(activeStream));
+$('ssound').addEventListener('click',()=>{soundUnlocked=true;if(activeStream){activeStream.v.muted=false;activeStream.v.play().catch(()=>{});}});
+$('tclose').addEventListener('click',closeTheatre);
+$('tfull').addEventListener('click',()=>{const t=$('theatre'),s=theatreStream;
+  if(t.requestFullscreen)t.requestFullscreen().catch(()=>{if(s&&s.v.webkitEnterFullscreen)s.v.webkitEnterFullscreen();});
+  else if(s&&s.v.webkitEnterFullscreen)s.v.webkitEnterFullscreen();});
+}
 
 /* ---------------- drawing places and zones ---------------- */
 function placeForZone(r){const i=own[r.y*W+r.x];return i>=0?state.places[i]:null;}
@@ -1086,7 +1272,11 @@ function renderPlaces(){
         ...Object.entries(MODES).map(([k,m])=>el('option',{value:k,textContent:m.label,selected:k===z.mode})));
       const zc=el('input',{type:'number',id:'zc-'+z.id,min:'1',max:'300',value:String(z.cap),'aria-label':'Max people',title:'Max people',onchange:e=>{z.cap=Math.max(1,Math.min(300,parseInt(e.target.value,10)||z.cap));state.preset='custom';changed();}});
       const zd=el('button',{type:'button',className:'del',textContent:'×','aria-label':`Delete ${z.name}`,onclick:()=>{p.zones=p.zones.filter(o=>o!==z);state.preset='custom';changed();}});
-      zl.append(el('div',{className:'zrow',style:{'--c':MODES[z.mode].col}},zn,zm,zc,zd));
+      const zs=el('input',{type:'text',className:'zs',id:'zs-'+z.id,value:z.stream?z.stream.streamer:'',placeholder:'Streamplace handle, e.g. pubtoons.com',spellcheck:false,'aria-label':'Streamplace stream shown in this zone',
+        onchange:e=>{const v=e.target.value.trim().replace(/^@/,'').replace(/^https?:\/\/stream\.place\//,'').replace(/\/.*$/,'');z.stream=v?{streamer:v}:undefined;state.preset='custom';changed();}});
+      const row=el('div',{className:'zrow',style:{'--c':MODES[z.mode].col}},zn,zm,zc,zd);
+      if(z.mode==='stage'||z.stream) row.append(zs);
+      zl.append(row);
     });
     return el('div',{className:'pblock'},head,zl);
   }));
@@ -1129,7 +1319,7 @@ function recordJSON(){
     generator:'pixelgen/0.2',
     size:state.size,seed:state.seed,
     places:state.places.map(p=>({id:p.id,name:p.name,theme:p.theme,rect:[p.x,p.y,p.w,p.h],
-      zones:p.zones.map(z=>({id:z.id,name:z.name,mode:z.mode,maxPeople:z.cap,rect:[z.x,z.y,z.w,z.h]}))})),
+      zones:p.zones.map(z=>({id:z.id,name:z.name,mode:z.mode,maxPeople:z.cap,rect:[z.x,z.y,z.w,z.h],...(z.stream?{stream:{service:'place.stream',streamer:z.stream.streamer}}:{})}))})),
     createdAt:state.createdAt
   },null,2);
 }
@@ -1152,6 +1342,8 @@ function updateStatus(){
   } else {
     kids.push(el('b',{textContent:state.name}),el('span',{textContent:tool==='walk'?'Outdoors. Proximity audio: you hear people within 3 tiles.':tool==='place'?'Drag on open ground to draw a place.':'Drag inside a place to draw a zone.'}));
   }
+  const hs=[...STREAMS.values()].find(s=>hearing(s)>0&&s.state==='live');
+  if(hs) kids.push(chipEl('Streamplace','#ff4d4d'),el('span',{textContent:`@${hs.streamer} is live on the screen. Sound gets louder as you walk closer.`}));
   if(near.length) kids.push(el('span',{textContent:`Near you: ${near.slice(0,3).map(n=>'@'+n.p.handle).join(', ')}${near.length>3?` and ${near.length-3} more`:''}`}));
   st.replaceChildren(...kids);
 }
@@ -1190,6 +1382,7 @@ $('reset').addEventListener('click',()=>{
 });
 capIn.value=MODES[zoneMode].cap;
 
+wireStreamUI();
 renderEvent();
 changed();
 requestAnimationFrame(loop);
