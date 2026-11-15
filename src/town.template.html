@@ -93,7 +93,9 @@ input[type=number]{width:64px}
 .checks li.warn::before{background:var(--warn)}
 .checks li.info::before{background:var(--muted)}
 pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px solid var(--line);border-radius:6px;padding:10px;max-height:260px;overflow:auto;white-space:pre;color:#cfd6e8}
-.small{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.small{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin:0}
+.reset{align-self:flex-start}
+.reset.confirm{background:var(--warn);border-color:var(--warn);color:#2a0d05;font-weight:600}
 @media (max-width:860px){
   html,body{height:auto}
   .app{display:block;height:auto}
@@ -178,6 +180,12 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
         <span class="small" id="recMeta"></span>
         <button class="btn" id="copy">Copy JSON</button>
       </div>
+    </section>
+
+    <section>
+      <h2>Reset</h2>
+      <p class="small">Go back to the AtmosphereConf conference layout. This replaces your places, zones, town name, size and seed.</p>
+      <button class="btn reset" id="reset">Reset to conference layout</button>
     </section>
   </aside>
 </div>
@@ -291,7 +299,8 @@ const STORE='pixelspace.town.v1';
 const nid=p=>p+(state.nextId++);
 let state=null;
 try{const s=JSON.parse(localStorage.getItem(STORE)||'null');if(s&&SIZES[s.size]&&Array.isArray(s.places))state=s;}catch(e){}
-if(!state){state={name:DATA?DATA.event.name+' town':'My town',size:'L',seed:'atmo-2027',preset:'atmoconf',places:[],nextId:1,createdAt:new Date().toISOString()};applyPreset();}
+function defaultState(){return {name:DATA?DATA.event.name+' town':'My town',size:'L',seed:'atmo-2027',preset:'atmoconf',places:[],nextId:1,createdAt:new Date().toISOString()};}
+if(!state){state=defaultState();applyPreset();}
 let tool='walk',placeTheme='office',zoneMode='lounge',zoom=2,prevZoom=2;
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
 
@@ -1170,6 +1179,15 @@ function findPerson(){
 $('findGo').addEventListener('click',findPerson);
 $('find').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();findPerson();}});
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(recordJSON());toast('Town record copied.');}catch(e){const s=getSelection(),rg=document.createRange();rg.selectNodeContents($('record'));s.removeAllRanges();s.addRange(rg);toast('Copy was blocked. The JSON is selected, so copy it by hand.');}});
+let resetArmed=0;
+$('reset').addEventListener('click',()=>{
+  const b=$('reset');
+  if(!resetArmed){b.classList.add('confirm');b.textContent='Click again to reset';resetArmed=setTimeout(()=>{resetArmed=0;b.classList.remove('confirm');b.textContent='Reset to conference layout';},4000);return;}
+  clearTimeout(resetArmed);resetArmed=0;b.classList.remove('confirm');b.textContent='Reset to conference layout';
+  try{localStorage.removeItem(STORE);}catch(e){}
+  state=defaultState();applyPreset();player=null;hover=null;zoom=2;prevZoom=2;tool='walk';
+  changed();toast('Back to the AtmosphereConf conference layout.');
+});
 capIn.value=MODES[zoneMode].cap;
 
 renderEvent();
