@@ -96,6 +96,22 @@ input[type=number]{width:64px}
 pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px solid var(--line);border-radius:6px;padding:10px;max-height:260px;overflow:auto;white-space:pre;color:#cfd6e8}
 .small{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin:0}
 .reset{align-self:flex-start}
+.tabs{display:flex;gap:4px;position:sticky;top:-18px;z-index:2;margin:-6px -16px -8px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+.tabs button{flex:1;background:#262d42;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer;font-weight:500}
+.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#1d1606;font-weight:600}
+.panel{display:flex;flex-direction:column;gap:22px}
+h2 .count{color:var(--text);margin-left:4px}
+.navlist,.plist{display:flex;flex-direction:column;gap:6px;list-style:none;margin:0;padding:0}
+.prow,.pnav{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 8px;border-radius:6px;background:#181d2c;border:1px solid var(--line)}
+.pnav{grid-template-columns:minmax(0,1fr) auto;border-left:4px solid var(--c)}
+.thumb{width:28px;height:28px;image-rendering:pixelated;border-radius:4px;background:#262d42}
+.pinfo{display:flex;flex-direction:column;min-width:0}
+.pinfo .h{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pinfo .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn.sm{padding:4px 9px;font-size:12px}
+.snav{background:#181d2c;border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.snav .row{flex-wrap:wrap}
+#find{width:100%}
 .stream-card{position:absolute;left:10px;bottom:10px;width:260px;max-width:calc(100% - 20px);background:#0c0f17f2;border:1px solid var(--line);border-radius:8px;overflow:hidden;opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .stream-card.show{opacity:1;transform:none;pointer-events:auto}
 .stream-card video,.theatre video{display:block;width:100%;aspect-ratio:16/9;background:#000;object-fit:contain}
@@ -115,7 +131,7 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
 .theatre .screenwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 .theatre .screenwrap video{max-height:100%;width:auto;max-width:100%;border-radius:6px}
 .theatre a.btn{text-decoration:none;color:var(--text)}
-@media (max-width:860px){.stream-card{width:200px}}
+@media (max-width:860px){.stream-card{width:200px}.tabs{top:0}}
 .reset.confirm{background:var(--warn);border-color:var(--warn);color:#2a0d05;font-weight:600}
 @media (max-width:860px){
   html,body{height:auto}
@@ -151,12 +167,12 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
       </div>
     </div>
     <div class="toolbar" id="toolbar">
-      <div class="seg" role="group" aria-label="Tool">
+      <div class="seg" role="group" aria-label="Tool" id="toolSeg">
         <button id="tWalk" aria-pressed="true">Walk</button>
         <button id="tPlace" aria-pressed="false">Draw place</button>
         <button id="tZone" aria-pressed="false">Draw zone</button>
       </div>
-      <span class="sep"></span>
+      <span class="sep" id="toolSep"></span>
       <div class="seg chips" id="chips" role="group" aria-label="Options"></div>
       <label class="cap" id="capWrap" for="capIn">Max people <input type="number" id="capIn" min="1" max="300" value="12"></label>
       <span class="hint" id="hint"></span>
@@ -167,14 +183,39 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
   <aside class="rail">
     <header>
       <h1>AT Gastown</h1>
-      <p class="lede">A town for an atproto event. The town holds places, and places hold zones. Every pixel is drawn by code from the town record at the bottom of this panel. The people are everyone who RSVP'd and has an rpg.actor sprite.</p>
+      <p class="lede">A town for an atproto event. Walk around, find people who RSVP'd and drop in on live streams. Every pixel is drawn by code from the town record.</p>
     </header>
 
+    <div class="tabs" role="tablist" aria-label="Sidebar">
+      <button type="button" role="tab" id="tabAttend" aria-controls="panelAttend" aria-selected="true">Attend</button>
+      <button type="button" role="tab" id="tabOrg" aria-controls="panelOrg" aria-selected="false" tabindex="-1">Organise</button>
+    </div>
+
+    <div class="panel" id="panelAttend" role="tabpanel" aria-labelledby="tabAttend">
     <section>
-      <h2>Linked event</h2>
+      <h2>Event</h2>
       <div class="event" id="event"></div>
     </section>
 
+    <section>
+      <h2>Live streams</h2>
+      <div class="navlist" id="streams"></div>
+    </section>
+
+    <section>
+      <h2>Places</h2>
+      <div class="navlist" id="placeNav"></div>
+    </section>
+
+    <section>
+      <h2>People <span class="count" id="pcount"></span></h2>
+      <input type="search" id="find" placeholder="Search by handle" spellcheck="false" autocomplete="off" aria-label="Search people by handle">
+      <p class="small" id="peopleMeta"></p>
+      <ul class="plist" id="plist"></ul>
+    </section>
+    </div>
+
+    <div class="panel" id="panelOrg" role="tabpanel" aria-labelledby="tabOrg" hidden>
     <section>
       <h2>Town</h2>
       <div class="field"><label for="tname">Name</label><input type="text" id="tname"></div>
@@ -188,15 +229,6 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
     <section>
       <h2>Places and zones</h2>
       <div class="places" id="places"></div>
-    </section>
-
-    <section>
-      <h2>People</h2>
-      <div class="field"><label for="find">Find someone</label>
-        <div class="row"><input type="search" id="find" list="handles" placeholder="handle, e.g. flo-bit.dev" spellcheck="false" autocomplete="off"><button class="btn" id="findGo">Walk to</button></div>
-        <datalist id="handles"></datalist>
-      </div>
-      <p class="small" id="peopleMeta"></p>
     </section>
 
     <section>
@@ -218,6 +250,7 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
       <p class="small">Go back to the AtmosphereConf conference layout. This replaces your places, zones, town name, size and seed.</p>
       <button class="btn reset" id="reset">Reset to conference layout</button>
     </section>
+    </div>
   </aside>
 </div>
 
@@ -1072,8 +1105,9 @@ function loop(now){const dt=Math.min(50,now-last);last=now;update(dt);draw(now,d
 const STREAMS=new Map(),HEAR=13,FULL=4;
 let activeStream=null,theatreStream=null,soundUnlocked=false;
 const vstash=document.getElementById('vstash');
-addEventListener('pointerdown',()=>{soundUnlocked=true;},{capture:true});
-addEventListener('keydown',()=>{soundUnlocked=true;},{capture:true});
+const unlock=()=>{soundUnlocked=true;for(const s of STREAMS.values())s.blocked=false;};
+addEventListener('pointerdown',unlock,{capture:true});
+addEventListener('keydown',unlock,{capture:true});
 const canSound=()=>navigator.userActivation?navigator.userActivation.hasBeenActive:soundUnlocked;
 const playlistUrl=s=>`https://stream.place/xrpc/place.stream.playback.getLivePlaylist?streamer=${encodeURIComponent(s.streamer)}`;
 function screenRect(z){
@@ -1104,7 +1138,7 @@ async function fetchStreamTitle(s){
     const pds=doc.service.find(x=>x.id.endsWith('atproto_pds')).serviceEndpoint;
     const l=await fetch(`${pds}/xrpc/com.atproto.repo.listRecords?repo=${did}&collection=place.stream.livestream&limit=1`).then(r=>r.json());
     const t=l.records&&l.records[0]&&l.records[0].value&&l.records[0].value.title;
-    if(t){s.title=t;renderStreamUI();}
+    if(t){s.title=t;renderStreamUI();renderStreamsNav();}
   }catch(e){}
 }
 function makeStream(z){
@@ -1132,8 +1166,8 @@ function updateStreams(dt){
     s.target=theatreStream===s?1:(s.state==='live'?hearing(s):0);
     s.vol+=(s.target-s.vol)*Math.min(1,dt/300);
     const vol=s.vol<.02?0:Math.min(1,s.vol);
-    if(vol===0||!canSound()){if(!s.v.muted)s.v.muted=true;}
-    else{try{s.v.volume=vol;}catch(e){}if(s.v.muted){s.v.muted=false;s.v.play().catch(()=>{s.v.muted=true;s.v.play().catch(()=>{});});}}
+    if(vol===0||!canSound()||s.blocked){if(!s.v.muted)s.v.muted=true;}
+    else{try{s.v.volume=vol;}catch(e){}if(s.v.muted){s.v.muted=false;s.v.play().catch(()=>{s.blocked=true;s.v.muted=true;s.v.play().catch(()=>{});});}}
     if(s.state==='live'&&s.v.paused&&s.v.readyState>=2)s.v.play().catch(()=>{});
     if(s.target>0&&(!best||s.target>best.target))best=s;
   }
@@ -1142,7 +1176,7 @@ function updateStreams(dt){
     activeStream=best;if(best)$('svbox').append(best.v);
     $('scard').classList.toggle('show',!!best);renderStreamUI();
   }
-  if(activeStream){$('svol').style.width=Math.round(activeStream.vol*100)+'%';$('ssound').hidden=canSound()||activeStream.target<=0;}
+  if(activeStream){$('svol').style.width=Math.round(activeStream.vol*100)+'%';$('ssound').hidden=activeStream.target<=0||(canSound()&&!activeStream.blocked);}
 }
 function renderStreamUI(){
   const s=activeStream||theatreStream;if(!s)return;
@@ -1186,7 +1220,7 @@ function drawScreens(now){
 }
 function wireStreamUI(){
 $('senlarge').addEventListener('click',()=>openTheatre(activeStream));
-$('ssound').addEventListener('click',()=>{soundUnlocked=true;if(activeStream){activeStream.v.muted=false;activeStream.v.play().catch(()=>{});}});
+$('ssound').addEventListener('click',()=>{unlock();if(activeStream){activeStream.v.muted=false;activeStream.v.play().catch(()=>{});}});
 $('tclose').addEventListener('click',closeTheatre);
 $('tfull').addEventListener('click',()=>{const t=$('theatre'),s=theatreStream;
   if(t.requestFullscreen)t.requestFullscreen().catch(()=>{if(s&&s.v.webkitEnterFullscreen)s.v.webkitEnterFullscreen();});
@@ -1294,11 +1328,61 @@ function renderEvent(){
   );
 }
 function chipEl(text,col){return el('span',{className:'pill',style:{'--c':col}},el('i'),text);}
+const whereIs=(x,y)=>{const j=y*W+x,zi=zoneAt[j];if(zi>=0){const {z,p}=flatZones[zi];return `${p.name} › ${z.name}`;}const pi=own[j];return pi>=0?state.places[pi].name:'Outdoors';};
+let peopleRows=[],streamSig='',tab='attend';
+function focusMap(){if(matchMedia('(max-width:860px)').matches)vp.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});cv.focus({preventScroll:true});}
+function walkToNpc(n){if(tool!=='walk')setTool('walk');hover=n;walkTo({x:n.tx,y:n.ty},true);toast(`Walking to @${n.p.handle}${n.wander?'. They’re wandering, so you may need to catch up.':'.'}`);focusMap();}
+function walkToStream(s){if(tool!=='walk')setTool('walk');walkTo({x:Math.floor((s.rect.x+s.rect.w/2)/T),y:Math.floor((s.rect.y+s.rect.h)/T)+3});toast(`Walking to the ${s.zone.name} screen. Sound fades in as you get close.`);focusMap();}
 function renderPeople(){
-  const withImg=PEOPLE.filter(p=>p.img).length+(ME.img?1:0);
   const hidden=DATA?DATA.hidden:0,moving=npcs.filter(n=>n.wander).length,seated=npcs.filter(n=>n.seated).length;
-  $('peopleMeta').textContent=`${(PEOPLE.length+1).toLocaleString('en-GB')} people on the map, everyone who RSVP'd and has an rpg.actor sprite: ${seated} seated, ${moving} wandering, the rest standing around.${hidden?` ${hidden} more RSVP'd without a sprite, so they aren’t shown yet.`:''}`;
-  $('handles').replaceChildren(...PEOPLE.map(p=>el('option',{value:p.handle})));
+  $('peopleMeta').textContent=`Everyone who RSVP'd and has an rpg.actor sprite: ${seated} seated, ${moving} wandering.${hidden?` ${hidden} more RSVP'd without a sprite and aren’t shown yet.`:''}`;
+  peopleRows=npcs.slice().sort((a,b)=>a.p.handle.localeCompare(b.p.handle)).map(n=>{
+    const c=el('canvas',{width:28,height:28,className:'thumb','aria-hidden':'true'});
+    const paint=()=>{const x=c.getContext('2d');x.imageSmoothingEnabled=false;x.drawImage(n.p.img,58,1,28,28,0,0,28,28);};
+    if(n.p.img.complete&&n.p.img.naturalWidth)paint();else n.p.img.addEventListener('load',paint,{once:true});
+    const where=el('span',{textContent:whereIs(n.tx,n.ty)});
+    const row=el('li',{className:'prow'},c,
+      el('div',{className:'pinfo'},el('span',{className:'h',textContent:'@'+n.p.handle}),el('span',{className:'small'},n.p.status==='going'?'Going · ':'Interested · ',where)),
+      el('button',{type:'button',className:'btn sm',textContent:'Walk to','aria-label':`Walk to @${n.p.handle}`,onclick:()=>walkToNpc(n)}));
+    return {n,row,where};
+  });
+  $('plist').replaceChildren(...peopleRows.map(r=>r.row));filterPeople();
+}
+function filterPeople(){
+  const q=$('find').value.trim().replace(/^@/,'').toLowerCase();let shown=0;
+  for(const r of peopleRows){const ok=!q||r.n.p.handle.toLowerCase().includes(q);r.row.hidden=!ok;if(ok)shown++;}
+  $('pcount').textContent=q?`${shown} of ${peopleRows.length}`:String(peopleRows.length);
+}
+function renderPlaceNav(){
+  const box=$('placeNav');
+  if(!state.places.length){box.replaceChildren(el('p',{className:'empty',textContent:'This town has no places yet. Organisers can draw them in the Organise tab.'}));return;}
+  box.replaceChildren(...state.places.map(p=>{const th=THEMES[p.theme];
+    return el('div',{className:'pnav',style:{'--c':th.swatch}},
+      el('div',{className:'pinfo'},el('span',{className:'h',textContent:p.name}),el('span',{className:'small',textContent:p.zones.length?p.zones.map(z=>z.name).join(' · '):th.name})),
+      el('button',{type:'button',className:'btn sm',textContent:'Go','aria-label':`Walk to ${p.name}`,onclick:()=>{if(tool!=='walk')setTool('walk');const d=doorOf(p);walkTo({x:d.x,y:d.y-1});toast(`Walking to ${p.name}.`);focusMap();}}));
+  }));
+}
+function renderStreamsNav(force){
+  const list=[...STREAMS.values()],sig=list.map(s=>s.streamer+s.state+s.title+(s.zone&&s.zone.name)).join('|');
+  if(!force&&sig===streamSig)return;streamSig=sig;
+  const box=$('streams');
+  if(!list.length){box.replaceChildren(el('p',{className:'empty',textContent:'No streams in this town. Organisers can add a Streamplace handle to a 1:many zone.'}));return;}
+  box.replaceChildren(...list.map(s=>{const live=s.state==='live';
+    return el('div',{className:'snav'},
+      el('div',{className:'row',style:{'justify-content':'space-between'}},el('span',{className:'live'+(live?'':' off'),textContent:live?'Live':s.state==='connecting'?'Connecting':'Offline'}),el('span',{className:'small',textContent:'@'+s.streamer})),
+      el('div',{className:'stitle',textContent:s.title||`@${s.streamer} on Streamplace`}),
+      el('div',{className:'small',textContent:`On the screen in ${s.place.name} › ${s.zone.name}`}),
+      el('div',{className:'row'},el('button',{type:'button',className:'btn',textContent:'Walk to the screen',onclick:()=>walkToStream(s)}),el('button',{type:'button',className:'btn',textContent:'Watch now',onclick:()=>openTheatre(s)})));
+  }));
+}
+function renderAttend(){renderStreamsNav(true);renderPlaceNav();renderPeople();}
+setInterval(()=>{if(tab!=='attend')return;for(const r of peopleRows){const t=whereIs(r.n.tx,r.n.ty);if(r.where.textContent!==t)r.where.textContent=t;}renderStreamsNav();},1500);
+function setTab(t){
+  tab=t;const a=t==='attend';
+  $('tabAttend').setAttribute('aria-selected',String(a));$('tabOrg').setAttribute('aria-selected',String(!a));
+  $('tabAttend').tabIndex=a?0:-1;$('tabOrg').tabIndex=a?-1:0;
+  $('panelAttend').hidden=!a;$('panelOrg').hidden=a;$('toolSeg').hidden=a;$('toolSep').hidden=a;
+  if(a&&tool!=='walk')setTool('walk');
 }
 function li(text,cls){return el('li',{className:cls||'',textContent:text});}
 function renderChecks(){
@@ -1347,7 +1431,7 @@ function updateStatus(){
   if(near.length) kids.push(el('span',{textContent:`Near you: ${near.slice(0,3).map(n=>'@'+n.p.handle).join(', ')}${near.length>3?` and ${near.length-3} more`:''}`}));
   st.replaceChildren(...kids);
 }
-function changed(){build();renderControls();renderPlaces();renderChecks();renderRecord();renderPeople();updateStatus();save();}
+function changed(){build();vp.style.setProperty('--ar',`${W}/${H}`);renderControls();renderPlaces();renderChecks();renderRecord();renderAttend();updateStatus();save();}
 
 $('tWalk').addEventListener('click',()=>setTool('walk'));
 $('tPlace').addEventListener('click',()=>setTool('place'));
@@ -1361,15 +1445,11 @@ $('seed').addEventListener('change',e=>{state.seed=e.target.value.trim()||'seed'
 $('tname').addEventListener('change',e=>{state.name=e.target.value.trim().slice(0,60)||'My town';renderRecord();updateStatus();save();});
 const WORDS=['amber','harbour','moss','copper','lantern','orchard','signal','meadow','granite','velvet','echo','pixel'];
 $('shuffle').addEventListener('click',()=>{const r=Math.random;state.seed=`${WORDS[Math.floor(r()*WORDS.length)]}-${WORDS[Math.floor(r()*WORDS.length)]}-${Math.floor(r()*90+10)}`;changed();});
-function findPerson(){
-  const q=$('find').value.trim().replace(/^@/,'').toLowerCase();if(!q)return;
-  const n=npcs.find(n=>n.p.handle.toLowerCase()===q)||npcs.find(n=>n.p.handle.toLowerCase().includes(q));
-  if(!n){toast(`No one matching “${q}” RSVP'd.`);return;}
-  if(tool!=='walk')setTool('walk');
-  hover=n;walkTo({x:n.tx,y:n.ty},true);toast(`Walking to @${n.p.handle} (${n.p.status}).`);cv.focus({preventScroll:true});
-}
-$('findGo').addEventListener('click',findPerson);
-$('find').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();findPerson();}});
+$('find').addEventListener('input',filterPeople);
+$('find').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const r=peopleRows.find(r=>!r.row.hidden);if(r)walkToNpc(r.n);else toast('No one with a sprite matches that handle.');}});
+$('tabAttend').addEventListener('click',()=>setTab('attend'));
+$('tabOrg').addEventListener('click',()=>setTab('organise'));
+for(const id of ['tabAttend','tabOrg'])$(id).addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){const t=tab==='attend'?'organise':'attend';setTab(t);$(t==='attend'?'tabAttend':'tabOrg').focus();}});
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(recordJSON());toast('Town record copied.');}catch(e){const s=getSelection(),rg=document.createRange();rg.selectNodeContents($('record'));s.removeAllRanges();s.addRange(rg);toast('Copy was blocked. The JSON is selected, so copy it by hand.');}});
 let resetArmed=0;
 $('reset').addEventListener('click',()=>{
@@ -1384,6 +1464,7 @@ capIn.value=MODES[zoneMode].cap;
 
 wireStreamUI();
 renderEvent();
+setTab('attend');
 changed();
 requestAnimationFrame(loop);
 })();
