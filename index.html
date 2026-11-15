@@ -113,6 +113,7 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
         <button id="zfit" aria-pressed="false">Fit</button>
         <button id="z2" aria-pressed="true">2×</button>
         <button id="z3" aria-pressed="false">3×</button>
+        <button id="z4" aria-pressed="false">4×</button>
       </div>
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </div>
@@ -1038,7 +1039,7 @@ function setTool(t){
 }
 function renderControls(){
   $('tWalk').setAttribute('aria-pressed',String(tool==='walk'));$('tPlace').setAttribute('aria-pressed',String(tool==='place'));$('tZone').setAttribute('aria-pressed',String(tool==='zone'));
-  $('zfit').setAttribute('aria-pressed',String(zoom==='fit'));$('z2').setAttribute('aria-pressed',String(zoom===2));$('z3').setAttribute('aria-pressed',String(zoom===3));
+  $('zfit').setAttribute('aria-pressed',String(zoom==='fit'));$('z2').setAttribute('aria-pressed',String(zoom===2));$('z3').setAttribute('aria-pressed',String(zoom===3));$('z4').setAttribute('aria-pressed',String(zoom===4));
   cv.classList.toggle('draw',tool!=='walk');
   const chips=$('chips');
   if(tool==='place') segButtons(chips,Object.entries(THEMES).map(([k,v])=>[k,v.name]),k=>k===placeTheme,k=>{placeTheme=k;renderControls();},k=>THEMES[k].swatch);
@@ -1151,6 +1152,7 @@ $('tZone').addEventListener('click',()=>setTool('zone'));
 $('zfit').addEventListener('click',()=>setZoom('fit'));
 $('z2').addEventListener('click',()=>setZoom(2));
 $('z3').addEventListener('click',()=>setZoom(3));
+$('z4').addEventListener('click',()=>setZoom(4));
 $('preset').addEventListener('change',e=>{if(e.target.value==='custom')return;state.preset=e.target.value;applyPreset();player=null;changed();});
 $('seed').addEventListener('change',e=>{state.seed=e.target.value.trim()||'seed';changed();});
 $('tname').addEventListener('change',e=>{state.name=e.target.value.trim().slice(0,60)||'My town';renderRecord();updateStatus();save();});
