@@ -134,7 +134,7 @@ pre{margin:0;font:11.5px/1.5 var(--font-mono);background:#121624;border:1px soli
   <aside class="rail">
     <header>
       <h1>AT Gastown</h1>
-      <p class="lede">A town for an atproto event. The town holds places, and places hold zones. Every pixel is drawn by code from the town record at the bottom of this panel. The people are everyone who RSVP'd, shown with their rpg.actor sprites.</p>
+      <p class="lede">A town for an atproto event. The town holds places, and places hold zones. Every pixel is drawn by code from the town record at the bottom of this panel. The people are everyone who RSVP'd and has an rpg.actor sprite.</p>
     </header>
 
     <section>
@@ -820,7 +820,7 @@ let ME=null;
 if(DATA){
   ME={handle:DATA.me.h,did:DATA.me.did,status:'going',img:loadImg(DATA.me.png),me:true};
   const pr=mulberry(12345);
-  DATA.people.forEach(p=>{const o={handle:p.h,status:p.s==='g'?'going':'interested'};if(p.png)o.img=loadImg(p.png);else o.ph=placeholderSheet(randomPalette(pr));PEOPLE.push(o);});
+  DATA.people.filter(p=>p.png).forEach(p=>PEOPLE.push({handle:p.h,status:p.s==='g'?'going':'interested',img:loadImg(p.png)}));
 } else {
   ME={handle:'you',status:'going',ph:placeholderSheet(randomPalette(mulberry(7))),me:true};
 }
@@ -831,7 +831,8 @@ function placePeople(){
   const going=shuffle(PEOPLE.filter(p=>p.status==='going'),r),interested=shuffle(PEOPLE.filter(p=>p.status!=='going'),r);
   npcs=[];const taken=new Set();
   let si=0;const standers=[];
-  for(const p of going){ if(si<seatList.length){const s=seatList[si++];taken.add(s.y*W+s.x);npcs.push({p,tx:s.x,ty:s.y,fx:s.x,fy:s.y,t:1,dir:s.f,path:[],seated:true,wait:0});} else standers.push(p); }
+  const sitters=Math.round(going.length*.55);
+  for(const p of going){ if(si<seatList.length&&si<sitters){const s=seatList[si++];taken.add(s.y*W+s.x);npcs.push({p,tx:s.x,ty:s.y,fx:s.x,fy:s.y,t:1,dir:s.f,path:[],seated:true,wait:0});} else standers.push(p); }
   const inside=[],outside=[];
   for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const c=y*W+x;if(solid[c]||!reachVis[c]||taken.has(c))continue;
     if(Math.abs(x-spawn.x)+Math.abs(y-spawn.y)<4)continue;
@@ -839,7 +840,7 @@ function placePeople(){
     (kind[c]===K.FLOOR&&zoneAt[c]<0?inside:(kind[c]===K.OUT||kind[c]===K.PATH?outside:null))?.push(c);}
   shuffle(inside,r);shuffle(outside,r);
   const stand=(p,pool)=>{const c=pool.pop();if(c===undefined)return false;taken.add(c);const x=c%W,y=(c/W)|0;
-    npcs.push({p,tx:x,ty:y,fx:x,fy:y,t:1,dir:['down','left','right','up'][Math.floor(r()*4)],path:[],seated:false,wander:r()<.45,wait:r()*4000});return true;};
+    npcs.push({p,tx:x,ty:y,fx:x,fy:y,t:1,dir:['down','left','right','up'][Math.floor(r()*4)],path:[],seated:false,wander:r()<.5,wait:r()*3000});return true;};
   for(const p of standers) stand(p,inside)||stand(p,outside);
   for(const p of interested) stand(p,outside)||stand(p,inside);
   npcs.forEach((n,i)=>n.i=i);
@@ -873,7 +874,7 @@ cv.addEventListener('pointerup',e=>{
   if(drag){commitDrag();drag=null;}
   else if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<10){
     const n=npcAt(down.w.x,down.w.y);
-    if(n){hover=n;toast(`@${n.p.handle} · ${n.p.status}${n.p.img?'':' · no rpg.actor sprite yet'}`);walkTo({x:n.tx,y:n.ty},true);}
+    if(n){hover=n;toast(`@${n.p.handle} · ${n.p.status}`);walkTo({x:n.tx,y:n.ty},true);}
     else walkTo(down.t);
   }
   down=null;
@@ -1096,7 +1097,8 @@ function renderEvent(){
 function chipEl(text,col){return el('span',{className:'pill',style:{'--c':col}},el('i'),text);}
 function renderPeople(){
   const withImg=PEOPLE.filter(p=>p.img).length+(ME.img?1:0);
-  $('peopleMeta').textContent=`${(PEOPLE.length+1).toLocaleString('en-GB')} people on the map: ${npcs.filter(n=>n.seated).length} going and seated, the rest standing around. ${withImg} use their rpg.actor sprite; the others get a stand-in drawn by code.`;
+  const hidden=DATA?DATA.hidden:0,moving=npcs.filter(n=>n.wander).length,seated=npcs.filter(n=>n.seated).length;
+  $('peopleMeta').textContent=`${(PEOPLE.length+1).toLocaleString('en-GB')} people on the map, everyone who RSVP'd and has an rpg.actor sprite: ${seated} seated, ${moving} wandering, the rest standing around.${hidden?` ${hidden} more RSVP'd without a sprite, so they aren’t shown yet.`:''}`;
   $('handles').replaceChildren(...PEOPLE.map(p=>el('option',{value:p.handle})));
 }
 function li(text,cls){return el('li',{className:cls||'',textContent:text});}
@@ -1105,7 +1107,7 @@ function renderChecks(){
   const capSum=state.places.reduce((a,p)=>a+p.zones.reduce((b,z)=>b+z.cap,0),0),people=PEOPLE.length+1;
   $('checks').replaceChildren(
     li(bad?`${bad} seat${bad>1?'s':''} can’t be reached from the town gate`:`All ${seats.length} seats and ${spots.length} speaker spots can be reached from the town gate`,bad?'warn':''),
-    li(people>sz.crowd?`${people} people RSVP'd, above the size ${state.size} crowd limit of ${sz.crowd}`:`${people} people RSVP'd, within the size ${state.size} crowd limit of ${sz.crowd}`,people>sz.crowd?'warn':''),
+    li(people>sz.crowd?`${people} people on the map, above the size ${state.size} crowd limit of ${sz.crowd}`:`${people} people on the map, within the size ${state.size} crowd limit of ${sz.crowd}`,people>sz.crowd?'warn':''),
     li(`Zone limits add up to ${capSum} people across ${state.places.length} place${state.places.length===1?'':'s'}`,'info'),
     li(`${props.filter(p=>p.k==='decor').length} decorations placed without blocking any route`,'info')
   );
